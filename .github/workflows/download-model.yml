@@ -12,6 +12,9 @@ on:
 jobs:
   download:
     runs-on: ubuntu-latest
+    permissions:
+      actions: write  # برای آپلود Artifact نیازه
+      contents: read   # فقط خوندن مخزن
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,25 +23,15 @@ jobs:
         run: |
           echo "Downloading model from ${{ github.event.inputs.model_url }}"
           curl -L -o model.bin "${{ github.event.inputs.model_url }}"
-          echo "✅ Download complete! File size: $(du -h model.bin | cut -f1)"
+          echo "✅ Download complete!"
 
-      - name: Create release directory
+      - name: Create models directory
         run: mkdir -p models
 
       - name: Move model to models directory
         run: mv model.bin ./models/
 
-      - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: "v1.0.0"
-          files: |
-            ./models/model.bin
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload as artifact
+      - name: Upload as artifact (only way to download)
         uses: actions/upload-artifact@v4
         with:
           name: whisper-model
