@@ -4,26 +4,25 @@ on:
   workflow_dispatch:
     inputs:
       model_url:
-        description: 'Direct URL to the model file'
+        description: 'Direct download URL for the model file'
         required: true
-        default: 'https://github.com/ggerganov/whisper.cpp/raw/master/models/ggml-base.bin'
+        default: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin'
         type: string
 
 jobs:
   download:
     runs-on: ubuntu-latest
-    permissions:
-      actions: write  # برای آپلود Artifact نیازه
-      contents: read   # فقط خوندن مخزن
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Download model file
+      - name: Download model file (follow redirects)
         run: |
           echo "Downloading model from ${{ github.event.inputs.model_url }}"
           curl -L -o model.bin "${{ github.event.inputs.model_url }}"
-          echo "✅ Download complete!"
+          # -L flag tells curl to follow redirects (301/302)
+          ls -lh model.bin
+          echo "✅ Download complete! File size: $(du -h model.bin | cut -f1)"
 
       - name: Create models directory
         run: mkdir -p models
@@ -31,9 +30,12 @@ jobs:
       - name: Move model to models directory
         run: mv model.bin ./models/
 
-      - name: Upload as artifact (only way to download)
+      - name: Verify file is valid
+        run: file ./models/model.bin
+
+      - name: Upload as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: whisper-model
+          name: whisper-model-${{ github.run_id }}
           path: ./models/model.bin
           retention-days: 30
